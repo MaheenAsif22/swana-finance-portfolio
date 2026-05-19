@@ -6,7 +6,40 @@ A full-stack finance management system built for small-to-medium businesses. Man
 
 ## Screenshots
 
-> _Add screenshots here after running the app_
+<table>
+  <tr>
+    <td align="center"><b>Login</b></td>
+    <td align="center"><b>Dashboard</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/01-login.png" width="250"/></td>
+    <td><img src="screenshots/02-dashboard.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Add Transaction</b></td>
+    <td align="center"><b>Ledger — All</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/03-add-transaction.png" width="250"/></td>
+    <td><img src="screenshots/04-ledger-all.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Ledger — Pending</b></td>
+    <td align="center"><b>Approvals</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/05-ledger-pending.png" width="250"/></td>
+    <td><img src="screenshots/06-approvals.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Reject Dialog</b></td>
+    <td align="center"><b>Reports</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/07-reject-dialog.png" width="250"/></td>
+    <td><img src="screenshots/08-reports.png" width="250"/></td>
+  </tr>
+</table>
 
 ---
 
@@ -102,8 +135,8 @@ swana-phase3-final/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/MaheenAsif22/swana-finance.git
-cd swana-finance
+git clone https://github.com/MaheenAsif22/swana-finance-portfolio.git
+cd swana-finance-portfolio
 ```
 
 ### 2. Start the backend
