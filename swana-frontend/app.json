@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Swana Finance",
+    "slug": "swana-finance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios":     { "supportsTablet": false, "bundleIdentifier": "com.swana.finance" },
+    "android": { "package": "com.swana.finance", "edgeToEdgeEnabled": true },
+    "web":     { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-secure-store"]
+  }
+}

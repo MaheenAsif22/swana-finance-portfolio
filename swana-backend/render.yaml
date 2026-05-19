@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: swana-finance-api
+    runtime: node
+    buildCommand: npm install && npm run seed
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30d
+      - key: ALLOWED_ORIGINS
+        value: https://swana-finance.vercel.app
+    disk:
+      name: swana-db
+      mountPath: /app/database
+      sizeGB: 1

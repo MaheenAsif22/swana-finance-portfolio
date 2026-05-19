@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-05-19T06:05:11.906Z",
+  "source_chat": "sample-chat.txt",
+  "total_messages": 24842,
+  "transactions": 18645,
+  "opening_balances": 1595,
+  "acks_skipped": 4015,
+  "no_amount_skipped": 278,
+  "system_skipped": 300,
+  "payees_unique_raw": 740,
+  "payees_clustered": 336,
+  "categories": 10,
+  "keywords_total": 223,
+  "category_match_rate": 0.5958165728077233,
+  "runtime_ms": 1766
+}
