@@ -1,183 +1,85 @@
 'use strict';
 
-require('dotenv').config();
-const bcrypt   = require('bcryptjs');
+const path    = require('path');
+const bcrypt  = require('bcryptjs');
 const { getDb } = require('../config/db');
-const { migrate } = require('./migrate');
 
 const db = getDb();
-migrate();
 
-console.log('\n🌱 Seeding database...');
+console.log('🌱  Seeding demo database...');
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
-const upsertUser = db.prepare(`
-  INSERT INTO users (name, username, pin_hash, role, site)
-  VALUES (?, ?, ?, ?, ?)
-  ON CONFLICT(username) DO NOTHING
-`);
-
-const USERS = [
-  { name: 'Usman',    username: 'usman',   pin: '1234', role: 'owner',   site: 'Head Office' },
-  { name: 'Zahid Sb', username: 'zahid',   pin: '0000', role: 'cashier', site: 'Factory – Rawalpindi' },
-  { name: 'Shazada',  username: 'shazada', pin: '0000', role: 'cashier', site: 'Factory – Site 2' },
+// ─── Users ────────────────────────────────────────────────────────────────────
+const users = [
+  { name: 'Admin User',   username: 'admin',    pin: '1234', role: 'owner',   site: 'Head Office' },
+  { name: 'Cashier One',  username: 'cashier1', pin: '0000', role: 'cashier', site: 'Branch A'    },
+  { name: 'Cashier Two',  username: 'cashier2', pin: '0000', role: 'cashier', site: 'Branch B'    },
 ];
 
-for (const u of USERS) {
-  upsertUser.run(u.name, u.username, bcrypt.hashSync(u.pin, 10), u.role, u.site);
+const insertUser = db.prepare(`
+  INSERT OR IGNORE INTO users (name, username, pin_hash, role, site)
+  VALUES (@name, @username, @pin_hash, @role, @site)
+`);
+
+for (const u of users) {
+  insertUser.run({ ...u, pin_hash: bcrypt.hashSync(u.pin, 10) });
 }
-console.log('  ✓ Users');
+console.log(`  ✓ ${users.length} users`);
 
-// ─── CATEGORIES ───────────────────────────────────────────────────────────────
-const upsertCat = db.prepare(`
-  INSERT INTO categories (name, icon, color)
-  VALUES (?, ?, ?)
-  ON CONFLICT(name) DO NOTHING
-`);
-
-const CATEGORIES = [
-  ['Fuel & Petrol',     'fuel',         '#E85D24'],
-  ['Meals & Food',      'utensils',     '#1D9E75'],
-  ['Materials & Parts', 'package',      '#BA7517'],
-  ['Labour & Wages',    'hard-hat',     '#7F77DD'],
-  ['Vendor Payments',   'building-2',   '#D4537E'],
-  ['Utility Bills',     'zap',          '#378ADD'],
-  ['Transport & Fare',  'car',          '#639922'],
-  ['Paint & Coatings',  'paint-bucket', '#888780'],
-  ['Stationery',        'paperclip',    '#0F6E56'],
-  ['Loans & Advances',  'hand-coins',   '#D85A30'],
-  ['Medical',           'heart-pulse',  '#E24B4A'],
-  ['Miscellaneous',     'tag',          '#B4B2A9'],
+// ─── Categories ───────────────────────────────────────────────────────────────
+const categories = [
+  { name: 'Salaries',       icon: 'people',        color: '#4CAF50' },
+  { name: 'Utilities',      icon: 'flash',         color: '#2196F3' },
+  { name: 'Transport',      icon: 'car',           color: '#FF9800' },
+  { name: 'Office',         icon: 'briefcase',     color: '#9C27B0' },
+  { name: 'Maintenance',    icon: 'construct',     color: '#F44336' },
+  { name: 'Supplies',       icon: 'cube',          color: '#00BCD4' },
+  { name: 'Miscellaneous',  icon: 'ellipsis-h',    color: '#607D8B' },
 ];
 
-for (const c of CATEGORIES) upsertCat.run(...c);
-console.log('  ✓ Categories');
-
-// ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
-const upsertAcc = db.prepare(`
-  INSERT INTO accounts (name, type, opening_balance)
-  VALUES (?, ?, ?)
-  ON CONFLICT(name) DO NOTHING
+const insertCat = db.prepare(`
+  INSERT OR IGNORE INTO categories (name, icon, color) VALUES (@name, @icon, @color)
 `);
+for (const c of categories) insertCat.run(c);
+console.log(`  ✓ ${categories.length} categories`);
 
-upsertAcc.run('Factory Cash Box', 'cash',   15510);
-upsertAcc.run('Askari Bank',      'bank',  300000);
-upsertAcc.run('Meezan Bank',      'bank',  450000);
-console.log('  ✓ Accounts');
+// ─── Accounts ─────────────────────────────────────────────────────────────────
+const accounts = [
+  { name: 'Main Cash',    type: 'cash',   opening_balance: 50000 },
+  { name: 'Bank Account', type: 'bank',   opening_balance: 200000 },
+  { name: 'Cheque Book',  type: 'cheque', opening_balance: 0 },
+];
 
-// ─── DAILY BALANCE ────────────────────────────────────────────────────────────
-const todayStr     = new Date().toISOString().split('T')[0];
-const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+const insertAcc = db.prepare(`
+  INSERT OR IGNORE INTO accounts (name, type, opening_balance) VALUES (@name, @type, @opening_balance)
+`);
+for (const a of accounts) insertAcc.run(a);
+console.log(`  ✓ ${accounts.length} accounts`);
 
-db.prepare(`
-  INSERT INTO daily_balance (account_id, date, amount, posted_by)
-  VALUES (1, ?, ?, 2)
-  ON CONFLICT(account_id, date) DO UPDATE SET amount = excluded.amount
-`).run(todayStr, 15510);
-
-db.prepare(`
-  INSERT INTO daily_balance (account_id, date, amount, posted_by)
-  VALUES (1, ?, ?, 2)
-  ON CONFLICT(account_id, date) DO UPDATE SET amount = excluded.amount
-`).run(yesterdayStr, 22000);
-
-console.log('  ✓ Daily balances');
-
-// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-// Fetch IDs after seeding
-const uid = (name) => db.prepare('SELECT id FROM users WHERE username = ?').get(name).id;
-const cid = (name) => db.prepare('SELECT id FROM categories WHERE name = ?').get(name).id;
-
-const ownerId    = uid('usman');
-const zahidId    = uid('zahid');
-const shazadaId  = uid('shazada');
+// ─── Sample Transactions ──────────────────────────────────────────────────────
+const transactions = [
+  { type: 'payment',  status: 'approved', amount: 15000, description: 'Monthly salaries',      payee: 'Staff',        payment_method: 'cash',   category_id: 1, account_id: 1, date: '2025-01-05', created_by: 1, approved_by: 1 },
+  { type: 'payment',  status: 'approved', amount: 3200,  description: 'Electricity bill',       payee: 'Utility Co',   payment_method: 'online', category_id: 2, account_id: 2, date: '2025-01-08', created_by: 2, approved_by: 1 },
+  { type: 'receipt',  status: 'approved', amount: 45000, description: 'Client payment received',payee: 'Client A',     payment_method: 'cheque', category_id: 7, account_id: 2, date: '2025-01-10', created_by: 1, approved_by: 1 },
+  { type: 'payment',  status: 'pending',  amount: 8500,  description: 'Vehicle fuel',           payee: 'Vendor 1',     payment_method: 'cash',   category_id: 3, account_id: 1, date: '2025-01-12', created_by: 2, approved_by: null },
+  { type: 'payment',  status: 'approved', amount: 2100,  description: 'Office stationery',      payee: 'Supplier A',   payment_method: 'cash',   category_id: 6, account_id: 1, date: '2025-01-15', created_by: 3, approved_by: 1 },
+  { type: 'payment',  status: 'rejected', amount: 12000, description: 'Equipment repair',       payee: 'Contractor X', payment_method: 'cash',   category_id: 5, account_id: 1, date: '2025-01-18', created_by: 2, approved_by: null },
+  { type: 'receipt',  status: 'approved', amount: 30000, description: 'Advance from client',    payee: 'Client B',     payment_method: 'online', category_id: 7, account_id: 2, date: '2025-01-20', created_by: 1, approved_by: 1 },
+  { type: 'payment',  status: 'approved', amount: 5500,  description: 'Internet & phone bills',  payee: 'Utility Co',   payment_method: 'online', category_id: 2, account_id: 2, date: '2025-01-22', created_by: 1, approved_by: 1 },
+  { type: 'payment',  status: 'pending',  amount: 9800,  description: 'Raw material purchase',  payee: 'Supplier B',   payment_method: 'cheque', category_id: 6, account_id: 3, date: '2025-01-25', created_by: 3, approved_by: null },
+  { type: 'payment',  status: 'approved', amount: 1800,  description: 'Miscellaneous expenses', payee: 'Vendor 2',     payment_method: 'cash',   category_id: 7, account_id: 1, date: '2025-01-28', created_by: 2, approved_by: 1 },
+];
 
 const insertTx = db.prepare(`
   INSERT INTO transactions
-    (type, status, amount, description, payee, payment_method,
-     category_id, account_id, date, created_by, approved_by, approved_at)
+    (type, status, amount, description, payee, payment_method, category_id, account_id, date, created_by, approved_by)
   VALUES
-    (@type, @status, @amount, @desc, @payee, @method,
-     @catId, 1, @date, @by, @apprBy, @apprAt)
+    (@type, @status, @amount, @description, @payee, @payment_method, @category_id, @account_id, @date, @created_by, @approved_by)
 `);
+for (const t of transactions) insertTx.run(t);
+console.log(`  ✓ ${transactions.length} sample transactions`);
 
-const paid = (type, amount, desc, payee, method, catName, by, date) => ({
-  type, status: 'paid', amount, desc, payee, method,
-  catId: cid(catName), by, apprBy: ownerId,
-  apprAt: new Date().toISOString(), date,
-});
-
-const pending = (amount, desc, payee, method, catName, by, date) => ({
-  type: 'request', status: 'pending', amount, desc, payee, method,
-  catId: cid(catName), by, apprBy: null, apprAt: null, date,
-});
-
-const seedTx = db.transaction(() => {
-  // ── Today ──
-  // Receipts
-  insertTx.run(paid('receipt',  56580, 'Cash from Usman Sb',             'Usman',          'cash',   'Miscellaneous',     zahidId,   todayStr));
-  insertTx.run(paid('receipt',  25000, 'Online transfer from Nouman',    'Nouman',         'online', 'Miscellaneous',     zahidId,   todayStr));
-
-  // Payments
-  insertTx.run(paid('payment',    500, 'Petrol for motorcycle',           'Bilal',          'cash',   'Fuel & Petrol',     zahidId,   todayStr));
-  insertTx.run(paid('payment',    440, 'Screws – factory',                'Rafaquat',       'cash',   'Materials & Parts', zahidId,   todayStr));
-  insertTx.run(paid('payment',   2000, 'Meal for labour',                 'Tasawar',        'cash',   'Meals & Food',      zahidId,   todayStr));
-  insertTx.run(paid('payment',    180, 'Thimble',                         'Nouman',         'cash',   'Materials & Parts', zahidId,   todayStr));
-  insertTx.run(paid('payment',    100, 'Surf / soap',                     'Mubin Tahir',    'cash',   'Miscellaneous',     zahidId,   todayStr));
-  insertTx.run(paid('payment',    410, 'Union and socket',                'Asad',           'cash',   'Materials & Parts', zahidId,   todayStr));
-  insertTx.run(paid('payment',    900, 'Wiper blade and fare',            'Abdul Quddus',   'cash',   'Transport & Fare',  zahidId,   todayStr));
-  insertTx.run(paid('payment',    300, 'Petrol – motorcycle',             'Gulzareen',      'cash',   'Fuel & Petrol',     zahidId,   todayStr));
-  insertTx.run(paid('payment',    360, 'Soap',                            'Fayyaz',         'cash',   'Miscellaneous',     zahidId,   todayStr));
-  insertTx.run(paid('payment',    720, 'Water bottles',                    null,            'cash',   'Meals & Food',      zahidId,   todayStr));
-  insertTx.run(paid('payment',   3520, 'Motorcycle tyre, meal and TCS',   'Shahzada',       'cash',   'Transport & Fare',  zahidId,   todayStr));
-  insertTx.run(paid('payment',  54050, 'Contract photocopies and binding', 'Shahzada',      'cash',   'Stationery',        zahidId,   todayStr));
-  insertTx.run(paid('cheque_out',48300,'DAS Pakistan – monthly invoice',  'DAS Pakistan',   'cheque', 'Vendor Payments',   zahidId,   todayStr));
-
-  // Pending requests
-  insertTx.run(pending(40000, 'Factory supplies – Q2',     'Abdul Quddus', 'cash',   'Materials & Parts', zahidId,  todayStr));
-  insertTx.run(pending( 5000, 'Factory running expenses',  'Abdul Quddus', 'online', 'Miscellaneous',     zahidId,  todayStr));
-  insertTx.run(pending(15000, 'Labour wages – week 2',     'Imtiaz',       'cash',   'Labour & Wages',    shazadaId,todayStr));
-  insertTx.run(pending( 8500, 'Paint and primer',           'Ali Paint',    'cash',   'Paint & Coatings',  shazadaId,todayStr));
-
-  // ── Yesterday ──
-  insertTx.run(paid('receipt',   5000, 'Cash from Imran Sb',             'Imran Sb',        'cash',   'Miscellaneous',     zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',   2350, 'Meal for Tasawar',               'Tasawar',          'cash',   'Meals & Food',      zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',  41000, 'LCD and fare',                   'Nouman',           'cash',   'Miscellaneous',     zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',   5000, 'Loan to Ali Shan',               'Ali Shan',         'cash',   'Loans & Advances',  zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',    630, 'Lemon, biscuits, sugar, tea',    'Habib Ullah',      'cash',   'Meals & Food',      zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',   1200, 'Electricity bill partial',       'WAPDA',            'cash',   'Utility Bills',     zahidId,   yesterdayStr));
-  insertTx.run(paid('payment',   3340, 'Expenditure Kamra',              'Intizar',          'cash',   'Miscellaneous',     zahidId,   yesterdayStr));
-
-  // ── 7 days ago ──
-  const d7 = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-  insertTx.run(paid('receipt',  80000, 'Cash from Usman Sb – weekly',   'Usman',            'cash',   'Miscellaneous',     zahidId,   d7));
-  insertTx.run(paid('payment',  12000, 'Wages – weekly labour',          'Imtiaz',           'cash',   'Labour & Wages',    zahidId,   d7));
-  insertTx.run(paid('payment',   4500, 'Petrol – factory van',           'Bilal',            'cash',   'Fuel & Petrol',     zahidId,   d7));
-  insertTx.run(paid('payment',   6200, 'Spare parts – compressor',       'Mehboob',          'cash',   'Materials & Parts', zahidId,   d7));
-  insertTx.run(paid('payment',  18000, 'Gas bill',                       'SNGPL',            'cheque', 'Utility Bills',     zahidId,   d7));
-
-  // ── 14 days ago ──
-  const d14 = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
-  insertTx.run(paid('receipt',  120000,'Cheque from Usman Sb',           'Usman',            'cheque', 'Miscellaneous',    zahidId,    d14));
-  insertTx.run(paid('payment',   9000, 'Paint – factory floor',          'Ali Paint',        'cash',   'Paint & Coatings', shazadaId,  d14));
-  insertTx.run(paid('payment',   2800, 'Meals – 2 days labour',          'Tasawar',          'cash',   'Meals & Food',     shazadaId,  d14));
-  insertTx.run(paid('payment',  25000, 'Abdul Quddus – advance',         'Abdul Quddus',     'cash',   'Loans & Advances', zahidId,    d14));
-  insertTx.run(paid('payment',   3100, 'TCS courier – documents',        'TCS',              'cash',   'Transport & Fare', zahidId,    d14));
-
-  // ── 30 days ago ──
-  const d30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-  insertTx.run(paid('receipt', 200000, 'Monthly cash from Usman Sb',    'Usman',             'cash',   'Miscellaneous',    zahidId,    d30));
-  insertTx.run(paid('payment',  45000, 'Monthly wages – all labour',    'Imtiaz',            'cash',   'Labour & Wages',   zahidId,    d30));
-  insertTx.run(paid('payment',  32000, 'Vendor – raw material',         'Arshad & Sons',     'cheque', 'Vendor Payments',  zahidId,    d30));
-  insertTx.run(paid('payment',   8900, 'Petrol – monthly',              'Bilal',             'cash',   'Fuel & Petrol',    zahidId,    d30));
-  insertTx.run(paid('payment',  14500, 'Utility bills – all',           'WAPDA/SNGPL',       'cash',   'Utility Bills',    zahidId,    d30));
-  insertTx.run(paid('payment',   1800, 'Medical – Haji Sb treatment',   'Dr Clinic',         'cash',   'Medical',          zahidId,    d30));
-});
-
-seedTx();
-console.log('  ✓ Transactions (42 records across 5 date ranges)');
-console.log('\n✅ Seed complete.');
-console.log('\nDemo logins:');
-console.log('  username: usman   | pin: 1234 | role: owner');
-console.log('  username: zahid   | pin: 0000 | role: cashier');
-console.log('  username: shazada | pin: 0000 | role: cashier\n');
+console.log('\n✅  Demo database ready!');
+console.log('\nDemo login credentials:');
+console.log('  username: admin     PIN: 1234  (owner)');
+console.log('  username: cashier1  PIN: 0000  (cashier)');
+console.log('  username: cashier2  PIN: 0000  (cashier)');
